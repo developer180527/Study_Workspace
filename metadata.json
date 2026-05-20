@@ -1,0 +1,6 @@
+{
+  "name": "PDF Note Taker",
+  "description": "A clean and powerful note-taking application featuring side-by-side PDF loading, viewing, and page-by-page annotation features.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
