@@ -3,6 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export interface Workspace {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastAccessed: string;
+}
+
 export interface Note {
   id: string;
   title: string;

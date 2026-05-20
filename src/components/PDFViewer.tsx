@@ -84,7 +84,9 @@ export default function PDFViewer({
       try {
         const sourceUrl = activeDoc.blobUrl || activeDoc.url;
         if (!sourceUrl) {
-          throw new Error("Invalid document source URL");
+          setError("Original browser local file link broken. Please re-upload this document.");
+          setLoading(false);
+          return;
         }
 
         const loadingTask = pdfjsLib.getDocument(sourceUrl);

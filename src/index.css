@@ -67,9 +67,7 @@
   min-height: 100%;
 }
 
-.dark .ProseMirror {
-  color: var(--color-slate-300);
-}
+
 
 .ProseMirror p {
   margin-top: 0.5em;
@@ -101,9 +99,7 @@
 .dark .ProseMirror h3,
 .dark .ProseMirror h4,
 .dark .ProseMirror h5,
-.dark .ProseMirror h6 {
-  color: var(--color-slate-100);
-}
+
 
 .ProseMirror h1 { font-size: 1.5rem; }
 .ProseMirror h2 { font-size: 1.25rem; }
@@ -118,10 +114,7 @@
   margin-bottom: 1em;
 }
 
-.dark .ProseMirror blockquote {
-  border-left-color: var(--color-slate-600);
-  color: var(--color-slate-400);
-}
+
 
 .ProseMirror code {
   background-color: var(--color-slate-100);
@@ -132,10 +125,7 @@
   font-size: 0.875em;
 }
 
-.dark .ProseMirror code {
-  background-color: var(--color-slate-800);
-  color: var(--color-rose-400);
-}
+
 
 .ProseMirror pre {
   background-color: var(--color-slate-900);
@@ -181,6 +171,4 @@
   text-decoration: underline;
 }
 
-.dark .ProseMirror a {
-  color: var(--color-indigo-400);
-}
+
