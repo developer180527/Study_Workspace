@@ -507,19 +507,19 @@ export default function Sidebar({
       {/* Delete PDF Confirmation Modal */}
       {pdfToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Delete Document</h2>
+          <div className="bg-white  rounded-2xl shadow-xl w-full max-w-sm border border-slate-200  overflow-hidden flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-100  flex items-center justify-between bg-slate-50 ">
+              <h2 className="text-base font-bold text-slate-800 ">Delete Document</h2>
               <button 
                 onClick={() => setPdfToDelete(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200   transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-5 flex flex-col gap-4">
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                Are you sure you want to remove <span className="font-bold text-slate-800 dark:text-slate-100">{pdfToDelete.name}</span> from your library?
+              <p className="text-sm text-slate-600 ">
+                Are you sure you want to remove <span className="font-bold text-slate-800 ">{pdfToDelete.name}</span> from your library?
               </p>
               <p className="text-xs text-rose-500 font-medium">
                 Note: This will not delete any annotations or notes that you anchors to this document.
@@ -527,7 +527,7 @@ export default function Sidebar({
               <div className="flex justify-end gap-3 mt-2">
                 <button
                   onClick={() => setPdfToDelete(null)}
-                  className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                  className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700   transition-colors"
                 >
                   Cancel
                 </button>

@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import { 
   Trash2, 
   Tag, 
@@ -19,7 +21,19 @@ import {
   Globe,
   CornerDownRight,
   HelpCircle,
-  BookOpen
+  BookOpen,
+  Bold,
+  Italic,
+  Strikethrough,
+  Code,
+  Heading1,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  Quote,
+  Undo,
+  Redo
 } from "lucide-react";
 import { Note } from "../types";
 
@@ -45,17 +59,35 @@ export default function NoteEditor({
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Auto-save typing for editor
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: '',
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      setContent(html);
+      triggerAutoSave(title, html);
+    },
+  });
+
   // Sync state with incoming note
   useEffect(() => {
     if (note) {
       setTitle(note.title);
       setContent(note.content);
       setSaveStatus("idle");
+      
+      if (editor && !editor.isDestroyed && editor.getHTML() !== note.content) {
+        editor.commands.setContent(note.content, false);
+      }
     } else {
       setTitle("");
       setContent("");
+      if (editor && !editor.isDestroyed) {
+        editor.commands.setContent('', false);
+      }
     }
-  }, [note?.id]);
+  }, [note?.id, editor]);
 
   // Handle auto-saving on edit
   const triggerAutoSave = (updatedTitle: string, updatedContent: string) => {
@@ -86,12 +118,6 @@ export default function NoteEditor({
     triggerAutoSave(val, content);
   };
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setContent(val);
-    triggerAutoSave(title, val);
-  };
-
   const addingTag = () => {
     if (!note || !newTag.trim()) return;
     const cleanTag = newTag.trim().toLowerCase();
@@ -117,28 +143,6 @@ export default function NoteEditor({
     });
   };
 
-  const insertMarkdown = (prefix: string, suffix: string = "") => {
-    const textarea = document.getElementById("note-textarea") as HTMLTextAreaElement;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const txt = textarea.value;
-
-    const selectedText = txt.substring(start, end);
-    const replacement = prefix + selectedText + suffix;
-
-    const newContent = txt.substring(0, start) + replacement + txt.substring(end);
-    setContent(newContent);
-    triggerAutoSave(title, newContent);
-
-    // Focus back and highlight inserted text
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
-    }, 50);
-  };
-
   const handleSeverLink = () => {
     if (!note) return;
     onUpdateNote({
@@ -148,51 +152,6 @@ export default function NoteEditor({
       pdfPage: undefined,
       updatedAt: new Date().toISOString()
     });
-  };
-
-  // Simple, robust Markdown-to-HTML parser using regex replacement to prevent external dependencies and HMR warnings
-  const parseMarkdown = (txt: string) => {
-    if (!txt.trim()) return "<p class='text-slate-400 italic'>Type content in Edit mode to view formatting preview...</p>";
-    
-    let html = txt
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-
-    // Headings
-    html = html.replace(/^### (.*$)/gim, '<h3 class="text-sm font-bold text-slate-800 mt-3 mb-1">$1</h3>');
-    html = html.replace(/^## (.*$)/gim, '<h2 class="text-base font-bold text-slate-800 mt-4 mb-1.5">$1</h2>');
-    html = html.replace(/^# (.*$)/gim, '<h1 class="text-lg font-bold text-slate-900 mt-5 mb-2">$1</h1>');
-
-    // Blockquotes
-    html = html.replace(/^\> (.*$)/gim, '<blockquote class="border-l-4 border-slate-300 pl-3 italic text-slate-600 my-2">$1</blockquote>');
-
-    // Code Blocks
-    html = html.replace(/```([\s\S]*?)```/gm, '<pre class="bg-slate-900 text-slate-100 p-3 rounded-lg font-mono text-xs overflow-x-auto my-3">$1</pre>');
-
-    // Inline Code
-    html = html.replace(/`([^`]+)`/g, '<code class="bg-slate-100 text-rose-600 px-1 py-0.5 rounded font-mono text-xs font-semibold">$1</code>');
-
-    // Bold & Italic
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>');
-    html = html.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>');
-
-    // Bullet points (simple match)
-    html = html.replace(/^\s*-\s+(.*$)/gim, '<li class="ml-4 list-disc text-slate-700">$1</li>');
-    html = html.replace(/^\s*\*\s+(.*$)/gim, '<li class="ml-4 list-disc text-slate-700">$1</li>');
-
-    // Ordered points
-    html = html.replace(/^\s*\d+\.\s+(.*$)/gim, '<li class="ml-4 list-decimal text-slate-700">$1</li>');
-
-    // Break lines to <br /> unless it's a list item
-    html = html.split('\n').map(line => {
-      if (line.includes('<li') || line.includes('<h') || line.includes('<pre') || line.includes('<block') || line.trim() === '') {
-        return line;
-      }
-      return line + '<br/>';
-    }).join('\n');
-
-    return html;
   };
 
   if (!note) {
@@ -246,21 +205,21 @@ export default function NoteEditor({
             className={`p-1.5 rounded-lg border transition-colors ${
               showMarkdownHint 
                 ? "bg-amber-50 text-amber-600 border-amber-200" 
-                : "bg-white text-slate-400 border-slate-200 hover:text-slate-600"
+                : "bg-white  text-slate-400  border-slate-200  hover:text-slate-600"
             }`}
-            title="Markdown Cheat Sheet"
+            title="Formatting Shortcuts"
           >
             <HelpCircle className="w-3.5 h-3.5" />
           </button>
 
-          {/* Toggle buttons for Edit / Preview */}
-          <div className="flex bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold select-none">
+          {/* Toggle buttons for Edit / Preview (now full screen / reading mode) */}
+          <div className="flex bg-slate-200/80  p-0.5 rounded-lg text-xs font-semibold select-none">
             <button
               onClick={() => { setEditMode("edit"); setShowMarkdownHint(false); }}
               className={`px-3 py-1 rounded-md flex items-center gap-1 transition-all ${
                 editMode === "edit"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white  text-slate-900  shadow-xs"
+                  : "text-slate-600  hover:text-slate-900"
               }`}
             >
               <Pencil className="w-3 h-3 text-indigo-500" />
@@ -270,12 +229,12 @@ export default function NoteEditor({
               onClick={() => setEditMode("preview")}
               className={`px-3 py-1 rounded-md flex items-center gap-1 transition-all ${
                 editMode === "preview"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white  text-slate-900  shadow-xs"
+                  : "text-slate-600  hover:text-slate-900"
               }`}
             >
               <Eye className="w-3 h-3 text-indigo-500" />
-              Preview
+              Read
             </button>
           </div>
 
@@ -339,12 +298,12 @@ export default function NoteEditor({
           <div><strong className="font-semibold">Bold</strong>: Wrap <code className="bg-amber-100/60 px-1 rounded">**word**</code></div>
           <div><strong className="font-semibold">Italic</strong>: Wrap <code className="bg-amber-100/60 px-1 rounded">*word*</code></div>
           <div><strong className="font-semibold">Highlights</strong>: Wrap code in backticks <code className="bg-amber-100/60 px-1 rounded">`code`</code></div>
-          <div className="col-span-2 text-[10px] text-amber-600 text-right mt-1">Markdown previews update and compile automatically.</div>
+            <div className="col-span-2 text-[10px] text-amber-600 text-right mt-1">Shortcuts work instantly in the editor!</div>
         </div>
       )}
 
       {/* Editor Main Canvas */}
-      <div className="grow overflow-hidden flex flex-col p-4 bg-white relative">
+      <div className="grow overflow-hidden flex flex-col p-4 bg-white  relative">
         {editMode === "edit" ? (
           <div className="flex flex-col h-full gap-3">
             {/* Title Input */}
@@ -353,69 +312,116 @@ export default function NoteEditor({
               placeholder="Give your study note reference a title..."
               value={title}
               onChange={handleTitleChange}
-              className="w-full text-base font-semibold text-slate-800 placeholder-slate-400 border-none p-1 focus:outline-hidden ring-0 bg-transparent"
+              className="w-full text-base font-semibold text-slate-800  placeholder-slate-400  border-none p-1 focus:outline-none ring-0 bg-transparent"
             />
-            <hr className="border-slate-100" />
+            <hr className="border-slate-100 " />
             
-            {/* Short markdown insert cheatsheet buttons */}
-            <div className="flex flex-wrap gap-1.5 shrink-0">
-              <button 
-                onClick={() => insertMarkdown("# ")} 
-                className="px-2 py-1 text-[11px] font-medium bg-slate-100 rounded-md hover:bg-slate-200 text-slate-600"
-              >
-                H1
-              </button>
-              <button 
-                onClick={() => insertMarkdown("## ")} 
-                className="px-2 py-1 text-[11px] font-medium bg-slate-100 rounded-md hover:bg-slate-200 text-slate-600"
-              >
-                H2
-              </button>
-              <button 
-                onClick={() => insertMarkdown("**", "**")} 
-                className="px-2 py-1 text-[11px] font-bold bg-slate-100 rounded-md hover:bg-slate-200 text-slate-600"
-              >
-                Bold
-              </button>
-              <button 
-                onClick={() => insertMarkdown("*", "*")} 
-                className="px-2 py-1 text-[11px] font-medium italic bg-slate-100 rounded-md hover:bg-slate-200 text-slate-600"
-              >
-                Italics
-              </button>
-              <button 
-                onClick={() => insertMarkdown("- ")} 
-                className="px-2 py-1 text-[11px] font-medium bg-slate-100 rounded-md hover:bg-slate-200 text-slate-600"
-              >
-                Bullet List
-              </button>
-              <button 
-                onClick={() => insertMarkdown("`", "`")} 
-                className="px-2 py-1 text-[11px] font-mono bg-slate-100 rounded-md hover:bg-slate-200 text-slate-600"
-              >
-                Inline Code
-              </button>
-            </div>
+            {/* TipTap Menu Bar */}
+            {editor && (
+              <div className="flex flex-wrap gap-1.5 shrink-0 mb-1 border-b border-slate-100  pb-2">
+                <button 
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('heading', { level: 1 }) ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Heading 1"
+                >
+                  <Heading1 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Heading 2"
+                >
+                  <Heading2 className="w-4 h-4" />
+                </button>
+                <div className="w-px h-5 bg-slate-200  my-auto mx-1" />
+                <button 
+                  onClick={() => editor.chain().focus().toggleBold().run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('bold') ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Bold"
+                >
+                  <Bold className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => editor.chain().focus().toggleItalic().run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('italic') ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Italic"
+                >
+                  <Italic className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => editor.chain().focus().toggleStrike().run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('strike') ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Strikethrough"
+                >
+                  <Strikethrough className="w-4 h-4" />
+                </button>
+                <div className="w-px h-5 bg-slate-200  my-auto mx-1" />
+                <button 
+                  onClick={() => editor.chain().focus().toggleBulletList().run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('bulletList') ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Bullet List"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => editor.chain().focus().toggleOrderedList().run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('orderedList') ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Numbered List"
+                >
+                  <ListOrdered className="w-4 h-4" />
+                </button>
+                <div className="w-px h-5 bg-slate-200  my-auto mx-1" />
+                <button 
+                  onClick={() => editor.chain().focus().toggleBlockquote().run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('blockquote') ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Quote"
+                >
+                  <Quote className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => editor.chain().focus().toggleCode().run()} 
+                  className={`p-1.5 rounded-md transition-colors ${editor.isActive('code') ? 'bg-indigo-50  text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title="Inline Code"
+                >
+                  <Code className="w-4 h-4" />
+                </button>
+                <div className="flex-grow"></div>
+                <button 
+                  onClick={() => editor.chain().focus().undo().run()} 
+                  className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 transition-colors"
+                  title="Undo"
+                >
+                  <Undo className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => editor.chain().focus().redo().run()} 
+                  className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 transition-colors"
+                  title="Redo"
+                >
+                  <Redo className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
-            {/* Note Canvas text area */}
-            <textarea
-              id="note-textarea"
-              placeholder="Capture paragraphs, transcribe annotations, draft outlines, or bullet points here..."
-              value={content}
-              onChange={handleContentChange}
-              className="w-full grow resize-none border-none p-1 focus:outline-hidden ring-0 text-sm leading-relaxed text-slate-700 placeholder-slate-300 font-sans"
-            />
+            {/* TipTap Base */}
+            <div className="w-full grow overflow-auto p-1 text-sm leading-relaxed text-slate-700  font-sans focus-within:outline-none">
+              <EditorContent editor={editor} className="h-full" />
+            </div>
           </div>
         ) : (
-          /* Markdown Live view rendering */
-          <div className="h-full overflow-auto pr-1">
-            <h1 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-2 mb-3">
-              {title || <span className="text-slate-300 font-normal italic">Untitled Note</span>}
+          /* Read View */
+          <div className="h-full overflow-auto pr-1 text-slate-800 ">
+            <h1 className="text-xl font-bold border-b border-slate-100  pb-2 mb-3">
+              {title || <span className="text-slate-400 font-normal italic">Untitled Note</span>}
             </h1>
-            <div 
-              className="markdown-body text-sm leading-relaxed text-slate-700"
-              dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-            />
+            {editor ? (
+              <div 
+                className="ProseMirror" 
+                dangerouslySetInnerHTML={{ __html: editor.getHTML() }}
+              />
+            ) : (
+              <p className="text-slate-400 italic">Nothing to see here...</p>
+            )}
           </div>
         )}
       </div>
