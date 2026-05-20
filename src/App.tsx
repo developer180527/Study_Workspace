@@ -9,7 +9,7 @@ import PDFViewer from "./components/PDFViewer";
 import NoteEditor from "./components/NoteEditor";
 import SettingsModal from "./components/SettingsModal";
 import Home from "./components/Home";
-import { Note, PDFDoc, Workspace } from "./types";
+import { Note, SourceDoc, Workspace } from "./types";
 import { 
   SYSTEM_TUTORIAL_PDF_BASE64, 
   INITIAL_PDF_DOC, 
@@ -38,7 +38,7 @@ export default function App() {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
 
   // PDF DOCS STATE (scoped to activeWorkspaceId)
-  const [pdfDocs, setPdfDocs] = useState<PDFDoc[]>([]);
+  const [pdfDocs, setPdfDocs] = useState<SourceDoc[]>([]);
   const [activePdfId, setActivePdfId] = useState<string | null>(null);
 
   // PDF ACTIVE VIEW STATE
@@ -130,7 +130,7 @@ export default function App() {
 
     if (savedPdfs) {
       try {
-        const parsedPdfs = JSON.parse(savedPdfs) as PDFDoc[];
+        const parsedPdfs = JSON.parse(savedPdfs) as SourceDoc[];
         const hydratedPdfs = parsedPdfs.map(d => {
           if (d.id === INITIAL_PDF_DOC.id) {
             return { ...d, blobUrl: tutorialBlobUrl };
@@ -187,7 +187,7 @@ export default function App() {
   };
 
   // Sync PDFs to LocalStorage
-  const handleUpdateDocsState = (updatedList: PDFDoc[]) => {
+  const handleUpdateDocsState = (updatedList: SourceDoc[]) => {
     setPdfDocs(updatedList);
     if (activeWorkspaceId) {
       const docsToSaveInCache = updatedList.map(d => ({
@@ -290,7 +290,7 @@ export default function App() {
       ? (parseFloat(sizeInKb) / 1024).toFixed(1) + " MB" 
       : sizeInKb + " KB";
 
-    const newDoc: PDFDoc = {
+    const newDoc: SourceDoc = {
       id: `pdf_user_${Date.now()}`,
       name: file.name,
       blobUrl: localBlobUrl,
@@ -310,7 +310,35 @@ export default function App() {
     setExternalPageTrigger(1);
   };
 
-  // Delete uploaded PDF file
+  // Add Youtube Link
+  const handleAddYoutube = (url: string) => {
+    // Basic YouTube title extraction could be done via oembed, but for offline/sync we just use a default
+    const videoIdMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    const videoId = videoIdMatch ? videoIdMatch[1] : "Unknown";
+    
+    const newDoc: SourceDoc = {
+      id: `yt_${Date.now()}`,
+      name: `YouTube Video (${videoId})`,
+      type: "youtube",
+      url: url,
+      fileSize: "N/A",
+      totalPages: 1,
+      uploadedAt: new Date().toISOString()
+    };
+
+    const updatedDocsList = [newDoc, ...pdfDocs];
+    handleUpdateDocsState(updatedDocsList);
+    setActivePdfId(newDoc.id);
+  };
+
+  const handleRenamePdf = (id: string, newName: string) => {
+    const updatedDocs = pdfDocs.map(doc => 
+      doc.id === id ? { ...doc, name: newName } : doc
+    );
+    handleUpdateDocsState(updatedDocs);
+  };
+
+  // Delete uploaded PDF/Youtube file
   const handleDeletePdf = (id: string) => {
     const updatedDocsList = pdfDocs.filter(d => d.id !== id);
     handleUpdateDocsState(updatedDocsList);
@@ -366,7 +394,7 @@ export default function App() {
   const currentWorkspaceName = workspaces.find(w => w.id === activeWorkspaceId)?.name || "Workspace";
 
   return (
-    <div className="h-full flex flex-col bg-slate-100  transition-colors duration-300">
+    <div className="h-full flex flex-col bg-slate-100 transition-colors duration-300">
       
       {view === "home" ? (
         <Home 
@@ -380,29 +408,29 @@ export default function App() {
       ) : (
         <>
           {/* Top Split Workspace Layout Switcher control shelf */}
-          <header className="bg-white  border-b border-slate-200  px-5 py-3 flex items-center justify-between shrink-0 transition-colors duration-300">
+          <header className="bg-white border-b border-slate-200 px-5 py-3 flex items-center justify-between shrink-0 transition-colors duration-300">
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setView("home")}
-                className="bg-indigo-50  hover:bg-indigo-100  border border-indigo-150  p-2 rounded-xl flex items-center justify-center transition-colors text-indigo-600 "
+                className="bg-indigo-50 hover:bg-indigo-100:bg-slate-600 border border-indigo-150 p-2 rounded-xl flex items-center justify-center transition-colors text-indigo-600"
                 title="Back to Home Workspaces"
               >
                 <HomeIcon className="w-4 h-4" />
               </button>
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 ">{currentWorkspaceName}</h2>
-                <p className="text-[10px] text-slate-400  font-medium">Side-by-side reading, formatting, and anchoring</p>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">{currentWorkspaceName}</h2>
+                <p className="text-[10px] text-slate-400 font-medium">Side-by-side reading, formatting, and anchoring</p>
               </div>
             </div>
 
             {/* Triple Layout selector buttons (Focus Reader, Focus Writer, Split View) */}
-            <div className="flex bg-slate-100  p-1 rounded-xl text-xs font-medium border border-slate-200  shadow-3xs select-none">
+            <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-medium border border-slate-200 shadow-3xs select-none">
               <button
                 onClick={() => setLayoutMode("pdf")}
                 className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                   layoutMode === "pdf"
-                    ? "bg-white  text-indigo-700  shadow-2xs font-bold"
-                    : "text-slate-600  hover:text-slate-900 "
+                    ? "bg-white text-indigo-700 shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900:text-slate-200"
                 }`}
                 title="Focus Reader (Maximize PDF)"
               >
@@ -414,8 +442,8 @@ export default function App() {
                 onClick={() => setLayoutMode("split")}
                 className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                   layoutMode === "split"
-                    ? "bg-white  text-indigo-700  shadow-2xs font-bold"
-                    : "text-slate-600  hover:text-slate-900 "
+                    ? "bg-white text-indigo-700 shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900:text-slate-200"
                 }`}
                 title="Split-Screen Workspace (Default)"
               >
@@ -427,8 +455,8 @@ export default function App() {
                 onClick={() => setLayoutMode("editor")}
                 className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                   layoutMode === "editor"
-                    ? "bg-white  text-indigo-700  shadow-2xs font-bold"
-                    : "text-slate-600  hover:text-slate-900 "
+                    ? "bg-white text-indigo-700 shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900:text-slate-200"
                 }`}
                 title="Focus Writer (Maximize Notes)"
               >
@@ -451,13 +479,15 @@ export default function App() {
               activePdfId={activePdfId}
               onSelectPdf={handleSelectPdf}
               onAddPdf={handleAddPdf}
+              onAddYoutube={handleAddYoutube}
+              onRenamePdf={handleRenamePdf}
               onDeletePdf={handleDeletePdf}
               currentOpenPage={currentOpenPage}
               onOpenSettings={() => setIsSettingsOpen(true)}
             />
 
             {/* Center Canvas Division (PDF Canvas + Markdown Editor) */}
-            <div className="grow overflow-hidden flex p-2 gap-2 bg-slate-150/70  h-full">
+            <div className="grow overflow-hidden flex p-1 gap-1 bg-slate-150/70 h-full">
               
               {/* Section A: PDF Canvas Viewer */}
               <div 

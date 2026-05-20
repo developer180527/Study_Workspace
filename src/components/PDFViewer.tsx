@@ -20,10 +20,10 @@ import {
   Layers,
   FolderOpen
 } from "lucide-react";
-import { PDFDoc } from "../types";
+import { SourceDoc } from "../types";
 
 interface PDFViewerProps {
-  activeDoc: PDFDoc | null;
+  activeDoc: SourceDoc | null;
   onPageChange?: (page: number) => void;
   externalPage?: number;
   onCreateNoteFromText?: (text: string, page: number) => void;
@@ -69,6 +69,15 @@ export default function PDFViewer({
     }
 
     const loadPdf = async () => {
+      if (activeDoc.type === "youtube") {
+        setPdf(null);
+        setNumPages(1);
+        setPageNumber(1);
+        setExtractedText("YouTube Video");
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       setExtractedText("");
@@ -258,7 +267,9 @@ export default function PDFViewer({
               {activeDoc.name}
             </h4>
             <p className="text-xs text-slate-500 font-mono">
-              Page {pageNumber} of {numPages} • {activeDoc.fileSize}
+              {activeDoc.type === "youtube" 
+                ? "YouTube Source" 
+                : `Page ${pageNumber} of ${numPages} • ${activeDoc.fileSize}`}
             </p>
           </div>
         </div>
@@ -273,93 +284,98 @@ export default function PDFViewer({
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            PDF Page Canvas
+            {activeDoc.type === "youtube" ? "Video Player" : "PDF Page Canvas"}
           </button>
-          <button
-            onClick={() => setActiveTab("scanner")}
-            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1 ${
-              activeTab === "scanner" 
-                ? "bg-white text-indigo-700 shadow-xs" 
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            Text Inspector
-          </button>
+          
+          {activeDoc.type !== "youtube" && (
+            <button
+              onClick={() => setActiveTab("scanner")}
+              className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1 ${
+                activeTab === "scanner" 
+                  ? "bg-white text-indigo-700 shadow-xs" 
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+              Text Inspector
+            </button>
+          )}
         </div>
       </div>
 
-      {/* PDF Action Control Bar (Zoom / Pagination) */}
-      <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0 text-slate-700">
-        
-        {/* Pagination */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => handlePageChange(pageNumber - 1)}
-            disabled={pageNumber <= 1 || pageLoading}
-            className="p-1 px-2 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-            title="Previous Page"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
+      {/* Action Control Bar (Zoom / Pagination) - Hidden for YouTube */}
+      {activeDoc.type !== "youtube" && (
+        <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0 text-slate-700">
           
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              value={pageNumber}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (!isNaN(val)) {
-                  handlePageChange(val);
-                }
-              }}
-              className="w-10 text-center font-semibold text-sm bg-white border border-slate-300 rounded-md py-1 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
-              title="Enter Page Number"
-            />
-            <span className="text-xs text-slate-500 font-medium">/ {numPages}</span>
+          {/* Pagination */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handlePageChange(pageNumber - 1)}
+              disabled={pageNumber <= 1 || pageLoading}
+              className="p-1 px-2 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              title="Previous Page"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={pageNumber}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (!isNaN(val)) {
+                    handlePageChange(val);
+                  }
+                }}
+                className="w-10 text-center font-semibold text-sm bg-white border border-slate-300 rounded-md py-1 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                title="Enter Page Number"
+              />
+              <span className="text-xs text-slate-500 font-medium">/ {numPages}</span>
+            </div>
+
+            <button
+              onClick={() => handlePageChange(pageNumber + 1)}
+              disabled={pageNumber >= numPages || pageLoading}
+              className="p-1 px-2 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              title="Next Page"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
 
-          <button
-            onClick={() => handlePageChange(pageNumber + 1)}
-            disabled={pageNumber >= numPages || pageLoading}
-            className="p-1 px-2 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-            title="Next Page"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+            <button
+              onClick={() => handleZoom(-0.25)}
+              className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            
+            <span className="text-xs font-mono font-bold select-none text-slate-500 min-w-[40px] text-center">
+              {Math.round(zoom * 100)}%
+            </span>
+
+            <button
+              onClick={() => handleZoom(0.25)}
+              className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => handleZoom(0)}
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors"
+              title="Reset Zoom"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-          <button
-            onClick={() => handleZoom(-0.25)}
-            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors"
-            title="Zoom Out"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          
-          <span className="text-xs font-mono font-bold select-none text-slate-500 min-w-[40px] text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-
-          <button
-            onClick={() => handleZoom(0.25)}
-            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors"
-            title="Zoom In"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => handleZoom(0)}
-            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors"
-            title="Reset Zoom"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Main Content Area */}
       <div className="grow overflow-auto relative flex justify-center bg-slate-200">
@@ -388,18 +404,39 @@ export default function PDFViewer({
           </div>
         )}
 
-        {/* Tab 1: PDF Viewer Canvas */}
+        {/* Tab 1: PDF Viewer Canvas / YouTube IFrame */}
         <div 
-          className={`p-6 min-h-full flex items-start justify-center ${activeTab === "document" ? "block" : "hidden"}`}
+          className={`p-6 min-h-full flex w-full items-start justify-center ${activeTab === "document" ? "block" : "hidden"}`}
           style={{ cursor: pageLoading ? "wait" : "default" }}
         >
-          <div className="bg-white p-2 rounded-xl shadow-lg border border-slate-300">
-            <canvas 
-              id={`pdf-canvas-${activeDoc.id}`}
-              ref={canvasRef} 
-              className="max-w-full block" 
-            />
-          </div>
+          {activeDoc.type === "youtube" ? (
+            <div className="w-full h-full flex flex-col pt-8 lg:px-8">
+              <div className="flex-grow w-full max-w-5xl mx-auto items-center justify-center flex relative rounded-xl shadow-lg border border-slate-300 overflow-hidden bg-black">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={activeDoc.url ? (() => {
+                    const videoIdMatch = activeDoc.url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                    const videoId = videoIdMatch ? videoIdMatch[1] : "";
+                    return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+                  })() : ""}
+                  title="YouTube video player"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0"
+                ></iframe>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-2 rounded-xl shadow-lg border border-slate-300">
+              <canvas 
+                id={`pdf-canvas-${activeDoc.id}`}
+                ref={canvasRef} 
+                className="max-w-full block" 
+              />
+            </div>
+          )}
         </div>
 
         {/* Tab 2: Text Inspector / Search Extraction */}

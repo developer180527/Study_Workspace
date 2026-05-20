@@ -23,13 +23,14 @@ export interface Note {
   isFavorite?: boolean;
 }
 
-export interface PDFDoc {
+export interface SourceDoc {
   id: string;
   name: string;
-  url?: string;        // For sample documents
+  type?: "pdf" | "youtube"; // Defaults to pdf for legacy
+  url?: string;        // For sample documents / youtube URL
   blobUrl?: string;    // Local object URL for uploaded files
-  fileSize: string;
-  totalPages: number;
+  fileSize: string;    // Optional/N/A for youtube
+  totalPages: number;  // Optional/N/A for youtube
   uploadedAt: string;
 }
 

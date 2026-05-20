@@ -20,9 +20,12 @@ import {
   X,
   FileDown,
   Link2,
-  Settings
+  Settings,
+  Youtube,
+  PlayCircle,
+  Edit2
 } from "lucide-react";
-import { Note, PDFDoc, SearchFilters } from "../types";
+import { Note, SourceDoc, SearchFilters } from "../types";
 
 interface SidebarProps {
   // Notes State
@@ -32,10 +35,12 @@ interface SidebarProps {
   onCreateNote: (pdfReference?: { pdfId: string; pageNumber: number; pdfName: string }) => void;
   
   // PDF State
-  pdfDocs: PDFDoc[];
+  pdfDocs: SourceDoc[];
   activePdfId: string | null;
   onSelectPdf: (id: string | null) => void;
   onAddPdf: (file: File, totalPages: number) => void;
+  onAddYoutube?: (url: string) => void;
+  onRenamePdf?: (id: string, newName: string) => void;
   onDeletePdf: (id: string) => void;
 
   // Selected Page indicator (to bind currently opened page to a new note)
@@ -54,6 +59,8 @@ export default function Sidebar({
   activePdfId,
   onSelectPdf,
   onAddPdf,
+  onAddYoutube,
+  onRenamePdf,
   onDeletePdf,
   currentOpenPage,
   onOpenSettings
@@ -62,7 +69,7 @@ export default function Sidebar({
   const [noteSearch, setNoteSearch] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const [pdfToDelete, setPdfToDelete] = useState<PDFDoc | null>(null);
+  const [pdfToDelete, setPdfToDelete] = useState<SourceDoc | null>(null);
   
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -208,7 +215,7 @@ export default function Sidebar({
           }`}
         >
           <FolderOpen className="w-3.5 h-3.5" />
-          <span>My PDFs ({pdfDocs.length})</span>
+          <span>Sources ({pdfDocs.length})</span>
         </button>
         <button
           onClick={() => setActiveTab("notes")}
@@ -257,6 +264,36 @@ export default function Sidebar({
                 <span className="w-1 h-1 rounded-full bg-rose-600"></span> {uploadError}
               </p>
             )}
+
+            <div className="mt-3 flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Paste YouTube link..." 
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-shadow"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = e.currentTarget.value;
+                    if (val && onAddYoutube) {
+                      onAddYoutube(val);
+                      e.currentTarget.value = '';
+                    }
+                  }
+                }}
+              />
+              <button 
+                className="bg-red-600 hover:bg-red-700 text-white rounded-lg px-2.5 py-1.5 flex items-center justify-center transition-colors shadow-sm"
+                title="Add YouTube Video"
+                onClick={(e) => {
+                  const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                  if (input && input.value && onAddYoutube) {
+                    onAddYoutube(input.value);
+                    input.value = '';
+                  }
+                }}
+              >
+                <Youtube className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Documents ListView */}
@@ -281,32 +318,59 @@ export default function Sidebar({
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
-                      <div className={`p-1.5 rounded-lg ${isSelected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"}`}>
-                        <FileText className="w-4 h-4" />
+                      <div className={`p-1.5 rounded-lg ${
+                        isSelected 
+                          ? (doc.type === "youtube" ? "bg-red-600 text-white" : "bg-indigo-600 text-white") 
+                          : "bg-slate-100 text-slate-500"
+                        }`}>
+                        {doc.type === "youtube" ? <Youtube className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
                       </div>
                       <div className="grow min-w-0 pr-4">
                         <h4 className="text-xs font-bold truncate pr-3" title={doc.name}>
                           {doc.name}
                         </h4>
                         <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-1">
-                          <span>{doc.totalPages} pages</span>
-                          <span>•</span>
-                          <span>{doc.fileSize}</span>
+                          {doc.type === "youtube" ? (
+                            <span>YouTube Video</span>
+                          ) : (
+                            <>
+                              <span>{doc.totalPages} pages</span>
+                              <span>•</span>
+                              <span>{doc.fileSize}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Delete PDF helper button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPdfToDelete(doc);
-                      }}
-                      className="absolute right-2 top-2 p-1 text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 rounded-md transition-opacity"
-                      title="Delete source PDF"
-                    >
-                      <Trash className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="absolute right-2 top-2 flex items-center justify-end flex-row opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onRenamePdf) {
+                            const newName = prompt("Rename Document:", doc.name);
+                            if (newName && newName.trim()) {
+                              onRenamePdf(doc.id, newName.trim());
+                            }
+                          }
+                        }}
+                        className="p-1 text-slate-400 hover:text-indigo-600 rounded-md transition-colors bg-white shadow-xs"
+                        title="Rename source"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      {/* Delete PDF helper button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPdfToDelete(doc);
+                        }}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded-md transition-colors bg-white shadow-xs"
+                        title="Delete source"
+                      >
+                        <Trash className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 );
               })
